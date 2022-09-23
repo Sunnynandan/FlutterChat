@@ -1,6 +1,7 @@
 import 'package:firebase/Auth.dart';
 import 'package:firebase/Chat_Screen.dart';
 import 'package:firebase/MainScreen.dart';
+import 'package:firebase/update_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +53,7 @@ class MyApp extends StatelessWidget {
             )),
             textTheme: TextTheme(
                 headline1: GoogleFonts.barlow(
-              fontSize: 35,
+              fontSize: 30,
               color: Colors.white,
             )),
             outlinedButtonTheme: OutlinedButtonThemeData(
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
         routes: {
           AuthPage.authpage: (context) => AuthPage(),
           chatscreen.chatpage: (context) => chatscreen(),
+          UpdatePro.updateProf: (context) => UpdatePro(),
         },
         home: StreamBuilder(
           stream: FirebaseAuth.instance.authStateChanges(),

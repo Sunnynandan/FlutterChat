@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase/Auth.dart';
 import 'package:firebase/Chat_Screen.dart';
+import 'package:firebase/update_profile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,20 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final userId = FirebaseAuth.instance.currentUser!.uid;
+  var _profImage =
+      "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png";
+  var _userName = "Loading....";
+
+  void getProfileData() async {
+    final data = (await FirebaseFirestore.instance
+        .collection('user')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .get());
+    setState(() {
+      _profImage = data['profile_url'];
+      _userName = data['user_name'];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,41 +35,104 @@ class _MainScreenState extends State<MainScreen> {
       drawer: Drawer(
         child: ListView(
           children: [
-            const DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Color(0xFF1E2A56),
-                ),
-                child: ListTile(
-                  iconColor: Colors.white,
-                  tileColor: Colors.white10,
-                  leading: Icon(Icons.settings, size: 40),
-                  title: Text(
-                    "Settings",
-                    style: TextStyle(fontSize: 20, color: Colors.white),
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [
+                  Color(0xFF1E2A56),
+                  Color.fromARGB(255, 26, 49, 62)
+                ]),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  StreamBuilder(
+                    stream: FirebaseFirestore.instance
+                        .collection('user')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator(
+                          color: Colors.white,
+                        );
+                      } else {
+                        return Column(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage:
+                                  NetworkImage(snapshot.data!['profile_url']),
+                              foregroundColor: Colors.cyan,
+                              radius: 55,
+                            ),
+                            Text(
+                              snapshot.data!['user_name'],
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 20),
+                            ),
+                          ],
+                        );
+                      }
+                    },
                   ),
-                )),
+                ],
+              ),
+            ),
             ListTile(
                 leading: const Icon(Icons.logout_rounded),
                 title: const Text("Sign Out"),
                 onTap: () {
                   Provider.of<Data>(context, listen: false).signout(context);
-                })
+                }),
+            ListTile(
+                leading: const Icon(Icons.delete_forever),
+                title: const Text("Delete Account"),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Are you Sure?"),
+                      actions: [
+                        TextButton(
+                          child: const Text("NO",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        TextButton(
+                            onPressed: (() {
+                              Provider.of<Data>(context, listen: false)
+                                  .deleteUser(context)
+                                  .then((value) {
+                                Navigator.of(context).pop();
+                              });
+                            }),
+                            child: const Text("YES",
+                                style: TextStyle(fontWeight: FontWeight.bold)))
+                      ],
+                    ),
+                  );
+                }),
+            ListTile(
+              leading: const Icon(Icons.update_sharp),
+              title: const Text("Update Profile"),
+              onTap: () {
+                //prof = [_profImage, _userName];
+
+                Navigator.of(context).pushNamed(
+                  UpdatePro.updateProf,
+                );
+              },
+            )
           ],
         ),
       ),
       appBar: AppBar(
-        title: Center(
-          child: Text(
-            "Members",
-            style: Theme.of(context).textTheme.headline1,
-          ),
+        title: Text(
+          "Members",
+          style: Theme.of(context).textTheme.headline1,
         ),
         elevation: 0,
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openDrawer()),
-        ],
       ),
       body: Container(
         margin: const EdgeInsets.symmetric(
@@ -84,34 +162,39 @@ class _MainScreenState extends State<MainScreen> {
                           itemCount: snapshot.data!.docs.length,
                           itemBuilder: (context, index) {
                             var data = snapshot.data!.docs.toList();
-                            return (userId != data[index]['user_id'])
-                                ? Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 2),
-                                    child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundImage: NetworkImage(
-                                            data[index]['profile_url']),
-                                        radius: 30,
-                                        backgroundColor:
-                                            const Color(0xFF1E2A56),
-                                      ),
-                                      onTap: () {
-                                        Navigator.of(context).pushNamed(
-                                            chatscreen.chatpage,
-                                            arguments: data[index]['user_id']);
-                                      },
-                                      title: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10.0),
-                                        child: Text(
-                                          data[index]['user_name'],
-                                          style: const TextStyle(fontSize: 20),
-                                        ),
-                                      ),
+                            if (userId != data[index]['user_id']) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 2),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundImage: NetworkImage(
+                                        data[index]['profile_url']),
+                                    radius: 30,
+                                    backgroundColor: const Color(0xFF1E2A56),
+                                  ),
+                                  onTap: () {
+                                    var userData = {
+                                      'userName': data[index]['user_name'],
+                                      'frndId': data[index]['user_id']
+                                    };
+                                    Navigator.of(context).pushNamed(
+                                        chatscreen.chatpage,
+                                        arguments: userData);
+                                  },
+                                  title: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10.0),
+                                    child: Text(
+                                      data[index]['user_name'],
+                                      style: const TextStyle(fontSize: 20),
                                     ),
-                                  )
-                                : const SizedBox.shrink();
+                                  ),
+                                ),
+                              );
+                            } else {
+                              return const SizedBox.shrink();
+                            }
                           },
                         );
                       }

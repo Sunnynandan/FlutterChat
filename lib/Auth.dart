@@ -8,7 +8,8 @@ import 'package:image_picker/image_picker.dart';
 class Data with ChangeNotifier {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
-  File _profileimage = File('profile_image.jpg');
+  File _profileimage = File(
+      "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png");
   final ImagePicker _imagePicker = ImagePicker();
 
   void snackBar(BuildContext context, String text) {
@@ -23,7 +24,7 @@ class Data with ChangeNotifier {
     ));
   }
 
-  Future<void> addMessage(String text, String friend_user_id) async {
+  String groupId(String friend_user_id) {
     String group_id = "";
     String user_id = _auth.currentUser!.uid;
 
@@ -32,7 +33,16 @@ class Data with ChangeNotifier {
     } else {
       group_id = '$friend_user_id-$user_id';
     }
-    await _db.collection("chats").doc(group_id).collection(group_id).add({
+
+    return group_id;
+  }
+
+  Future<void> addMessage(String text, String friend_user_id) async {
+    await _db
+        .collection("chats")
+        .doc(groupId(friend_user_id))
+        .collection(groupId(friend_user_id))
+        .add({
       "message": text,
       "time": Timestamp.now(),
       "user_id": _auth.currentUser!.uid,
@@ -55,7 +65,7 @@ class Data with ChangeNotifier {
     try {
       await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
-      await _db.collection("user").add({
+      await _db.collection("user").doc(_auth.currentUser!.uid).set({
         "user_name": userName,
         "user_id": _auth.currentUser!.uid,
         "profile_url": await getUrlStorage()
@@ -107,14 +117,73 @@ class Data with ChangeNotifier {
                 element.reference.delete();
               })
             });
+
+    notifyListeners();
   }
 
   Future<File> setProfileImage() async {
     var image = (await _imagePicker.pickImage(
-        imageQuality: 30, source: ImageSource.gallery))!;
+        imageQuality: 20, source: ImageSource.gallery))!;
     _profileimage = File(image.path);
     return _profileimage;
   }
 
-  Future<void> deleteUser() async {}
+  Future<void> deleteUser(BuildContext context) async {
+    final userId = _auth.currentUser!.uid;
+
+    try {
+      await FirebaseStorage.instance
+          .ref()
+          .child('user_image')
+          .child('$userId.jpg')
+          .delete(); // deleting the profile pic
+    } on FirebaseStorage catch (e) {
+      snackBar(context, e.toString());
+    }
+
+    final userlist = await _db.collection('user').get();
+    var list = userlist.docs.toList(); // list of user
+
+    list.forEach((element) async {
+      // deleting the chat peers
+
+      await _db
+          .collection('chats')
+          .doc(groupId(element['user_id']))
+          .collection(groupId(element['user_id']))
+          .get()
+          .then((value) => {
+                value.docs.forEach((val) {
+                  val.reference.delete();
+                })
+              });
+    });
+
+    try {
+      await _db.collection('user').doc(_auth.currentUser!.uid).delete();
+    } on FirebaseStorage catch (e) {
+      snackBar(context, e.toString());
+    }
+    try {
+      await _auth.currentUser!.delete();
+    } on FirebaseStorage catch (e) {
+      snackBar(context, e.toString());
+    }
+  }
+
+  Future<void> updateProfile(String userName, File image) async {
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('user_image')
+        .child('${_auth.currentUser!.uid}.jpg');
+    await ref.delete();
+    await ref.putFile(image);
+    final url = await ref.getDownloadURL();
+
+    await _db.collection("user").doc(_auth.currentUser!.uid).set({
+      "user_name": userName,
+      "user_id": _auth.currentUser!.uid,
+      "profile_url": url
+    });
+  }
 }

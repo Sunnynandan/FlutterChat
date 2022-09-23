@@ -3,17 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase/bubble_message.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 class chatscreen extends StatelessWidget {
-  //const chatscreen({super.key});
   final String text = "";
-  final user_id = "";
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
   final TextEditingController _controller = TextEditingController();
   static const chatpage = '/chat-page';
+  var _frnduserId = "";
 
   String groupId(String friend_user_id) {
     String group_id = "";
@@ -30,8 +28,9 @@ class chatscreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxSize = MediaQuery.of(context).size;
-    final frnduserid = ModalRoute.of(context)!.settings.arguments as String;
+    var args = ModalRoute.of(context)!.settings.arguments as Map;
+    var userName = args['userName'] as String;
+    _frnduserId = args['frndId'] as String;
     return Scaffold(
         drawer: Drawer(
           child: ListView(
@@ -44,10 +43,33 @@ class chatscreen extends StatelessWidget {
               ListTile(
                 tileColor: Colors.white10,
                 leading: const Icon(Icons.delete),
-                title: const Text("Delete Chats"),
+                title: const Text(
+                  "Delete Chats",
+                  style: TextStyle(fontSize: 17),
+                ),
                 onTap: () {
-                  Provider.of<Data>(context, listen: false)
-                      .DeleteChats(groupId(frnduserid));
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      content: const Text("Are You Sure?"),
+                      actions: [
+                        TextButton(
+                            onPressed: (() {
+                              Navigator.of(context).pop();
+                            }),
+                            child: const Text("NO",
+                                style: TextStyle(fontWeight: FontWeight.bold))),
+                        TextButton(
+                            onPressed: () {
+                              Provider.of<Data>(context, listen: false)
+                                  .DeleteChats(groupId(_frnduserId))
+                                  .then((value) => Navigator.of(context).pop());
+                            },
+                            child: const Text("YES",
+                                style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                  );
                 },
               )
             ],
@@ -55,9 +77,10 @@ class chatscreen extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         appBar: AppBar(
-          leading: IconButton(
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: const Icon(Icons.menu)),
+          title: Text(
+            userName,
+            style: Theme.of(context).textTheme.headline1,
+          ),
           backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         ),
         body: Column(
@@ -66,8 +89,8 @@ class chatscreen extends StatelessWidget {
             StreamBuilder(
                 stream: FirebaseFirestore.instance
                     .collection('chats')
-                    .doc(groupId(frnduserid))
-                    .collection(groupId(frnduserid))
+                    .doc(groupId(_frnduserId))
+                    .collection(groupId(_frnduserId))
                     .orderBy('time', descending: true)
                     .limit(100)
                     .snapshots(),
@@ -105,7 +128,6 @@ class chatscreen extends StatelessWidget {
                   child: TextField(
                     controller: _controller,
                     decoration: const InputDecoration(
-                        alignLabelWithHint: true,
                         hintText: "Enter the message here",
                         border: OutlineInputBorder(
                             borderSide:
@@ -121,7 +143,7 @@ class chatscreen extends StatelessWidget {
                     String text = _controller.text;
                     if (text.isNotEmpty) {
                       Provider.of<Data>(context, listen: false)
-                          .addMessage(text, frnduserid);
+                          .addMessage(text, _frnduserId);
                       _controller.clear();
                     }
                   },

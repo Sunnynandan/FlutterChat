@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:firebase/Auth.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 class AuthPage extends StatefulWidget {
@@ -10,14 +9,14 @@ class AuthPage extends StatefulWidget {
   bool _confirm = true;
   bool _createaccount = true;
   bool _pass = true;
-  final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _emailcontroller = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordcontroller = TextEditingController();
   final TextEditingController _confirmpass = TextEditingController();
   final _formkey = GlobalKey<FormState>();
   static const authpage = '/Authpage';
-  File _image = File('profile_image.jpg');
+  File _image = File(
+      "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png");
 
   AuthPage({super.key});
 
@@ -51,14 +50,14 @@ class _AuthPageState extends State<AuthPage> {
         ),
         body: Center(
           child: AnimatedContainer(
-            curve: Curves.easeInOutCubic,
+            curve: Curves.easeInOutQuad,
             duration: const Duration(milliseconds: 350),
             padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
             height: maxHeight * ((widget._createaccount) ? 0.39 : 0.73),
             width: maxWidth * 0.8,
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.all(Radius.circular(15)),
+              borderRadius: BorderRadius.all(Radius.circular(25)),
             ),
             child: SingleChildScrollView(
               child: Form(
@@ -204,7 +203,7 @@ class _AuthPageState extends State<AuthPage> {
                                 hintText: "Username",
                                 border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8)),
-                                iconColor: Color(0xFF1E2A56),
+                                iconColor: const Color(0xFF1E2A56),
                                 suffixIcon: const Icon(Icons.verified_user)),
                           ),
                         ),
