@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase/encrypter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +44,7 @@ class Data with ChangeNotifier {
         .doc(groupId(friend_user_id))
         .collection(groupId(friend_user_id))
         .add({
-      "message": text,
+      "message": Encrypt.encryptAES(text),
       "time": Timestamp.now(),
       "user_id": _auth.currentUser!.uid,
     });
@@ -65,11 +66,6 @@ class Data with ChangeNotifier {
     try {
       await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
-      await _db.collection("user").doc(_auth.currentUser!.uid).set({
-        "user_name": userName,
-        "user_id": _auth.currentUser!.uid,
-        "profile_url": await getUrlStorage()
-      });
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
         snackBar(context, 'Please enter a Strong Password');
@@ -79,6 +75,16 @@ class Data with ChangeNotifier {
     } catch (e) {
       snackBar(context, e.toString());
     }
+    try {
+      await _db.collection("user").doc(_auth.currentUser!.uid).set({
+        "user_name": userName,
+        "user_id": _auth.currentUser!.uid,
+        "profile_url": await getUrlStorage()
+      });
+    } catch (e) {
+      rethrow;
+    }
+
     notifyListeners();
   }
 
@@ -107,16 +113,18 @@ class Data with ChangeNotifier {
   }
 
   Future<void> DeleteChats(String frnduserId) async {
-    await _db
-        .collection('chats')
-        .doc(frnduserId)
-        .collection(frnduserId)
-        .get()
-        .then((value) => {
-              value.docs.forEach((element) {
-                element.reference.delete();
-              })
-            });
+    try {
+      await _db
+          .collection('chats')
+          .doc(frnduserId)
+          .collection(frnduserId)
+          .get()
+          .then((value) => {
+                value.docs.forEach((element) {
+                  element.reference.delete();
+                })
+              });
+    } catch (e) {}
 
     notifyListeners();
   }
@@ -138,37 +146,37 @@ class Data with ChangeNotifier {
           .child('$userId.jpg')
           .delete(); // deleting the profile pic
     } on FirebaseStorage catch (e) {
-      snackBar(context, e.toString());
+    } finally {
+      final userlist = await _db.collection('user').get();
+      var list = userlist.docs.toList(); // list of user
+
+      list.forEach((element) async {
+        // deleting the chat peers
+
+        await _db
+            .collection('chats')
+            .doc(groupId(element['user_id']))
+            .collection(groupId(element['user_id']))
+            .get()
+            .then((value) => {
+                  value.docs.forEach((val) {
+                    val.reference.delete();
+                  })
+                });
+      });
     }
-
-    final userlist = await _db.collection('user').get();
-    var list = userlist.docs.toList(); // list of user
-
-    list.forEach((element) async {
-      // deleting the chat peers
-
-      await _db
-          .collection('chats')
-          .doc(groupId(element['user_id']))
-          .collection(groupId(element['user_id']))
-          .get()
-          .then((value) => {
-                value.docs.forEach((val) {
-                  val.reference.delete();
-                })
-              });
-    });
 
     try {
       await _db.collection('user').doc(_auth.currentUser!.uid).delete();
     } on FirebaseStorage catch (e) {
-      snackBar(context, e.toString());
+      rethrow;
     }
     try {
       await _auth.currentUser!.delete();
     } on FirebaseStorage catch (e) {
-      snackBar(context, e.toString());
+      rethrow;
     }
+    notifyListeners();
   }
 
   Future<void> updateProfile(String userName, File image) async {
@@ -185,5 +193,6 @@ class Data with ChangeNotifier {
       "user_id": _auth.currentUser!.uid,
       "profile_url": url
     });
+    notifyListeners();
   }
 }

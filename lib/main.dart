@@ -24,7 +24,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         theme: ThemeData(
-            drawerTheme: DrawerThemeData(),
             listTileTheme: ListTileThemeData(
               textColor: Colors.black,
               contentPadding: const EdgeInsets.all(4),

@@ -1,6 +1,7 @@
 import 'package:firebase/Auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase/bubble_message.dart';
+import 'package:firebase/encrypter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -110,7 +111,7 @@ class chatscreen extends StatelessWidget {
                           itemBuilder: (context, index) {
                             var data = snapshot.data!.docs.toList();
                             return Message(
-                              data[index]['message'],
+                              Encrypt.decryptAES(data[index]['message']),
                               _auth.currentUser!.uid == data[index]['user_id'],
                             );
                           },

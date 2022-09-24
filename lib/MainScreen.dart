@@ -14,20 +14,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final userId = FirebaseAuth.instance.currentUser!.uid;
-  var _profImage =
-      "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png";
-  var _userName = "Loading....";
-
-  void getProfileData() async {
-    final data = (await FirebaseFirestore.instance
-        .collection('user')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .get());
-    setState(() {
-      _profImage = data['profile_url'];
-      _userName = data['user_name'];
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,10 +88,8 @@ class _MainScreenState extends State<MainScreen> {
                         TextButton(
                             onPressed: (() {
                               Provider.of<Data>(context, listen: false)
-                                  .deleteUser(context)
-                                  .then((value) {
-                                Navigator.of(context).pop();
-                              });
+                                  .deleteUser(context);
+                              Navigator.of(context).pop();
                             }),
                             child: const Text("YES",
                                 style: TextStyle(fontWeight: FontWeight.bold)))
